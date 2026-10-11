@@ -218,3 +218,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# dealflow-triage
+data/
+*.db
+credentials.json
+token.json
