@@ -54,8 +54,12 @@ def read_file(path: Path, store: RawStore) -> FolderItem:
     return FolderItem(path, pitch, note=f"unsupported file type: {path.name}")
 
 
+def list_files(folder: Path) -> list[Path]:
+    """Every file at the top level of a folder, in alphabetical order, system files skipped."""
+    files = [p for p in Path(folder).iterdir() if p.is_file() and not _is_ignored(p)]
+    return sorted(files, key=lambda p: p.name.lower())
+
+
 def read_folder(folder: Path, store: RawStore) -> list[FolderItem]:
     """Read every file at the top level of a folder, in alphabetical order."""
-    folder = Path(folder)
-    files = [p for p in folder.iterdir() if p.is_file() and not _is_ignored(p)]
-    return [read_file(p, store) for p in sorted(files, key=lambda p: p.name.lower())]
+    return [read_file(p, store) for p in list_files(folder)]

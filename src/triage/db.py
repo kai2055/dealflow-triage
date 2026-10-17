@@ -63,7 +63,7 @@ def connect(path: Path = DEFAULT_DB_PATH) -> sqlite3.Connection:
     return conn
 
 
-def insert_pitch(conn: sqlite3.Connection, pitch: RawPitch) -> tuple[str, bool]:
+def insert_pitch(conn: sqlite3.Connection, pitch: RawPitch, reason: str = "ingested") -> tuple[str, bool]:
     """Store a new pitch. Returns (pitch_id, True), or (existing pitch_id, False) for a duplicate."""
     existing = conn.execute(
         "SELECT pitch_id FROM pitch WHERE raw_hash = ? OR (message_id IS NOT NULL AND message_id = ?)",
@@ -92,7 +92,7 @@ def insert_pitch(conn: sqlite3.Connection, pitch: RawPitch) -> tuple[str, bool]:
         conn.execute(
             """INSERT INTO state_history (pitch_id, from_state, to_state, changed_at, reason)
                VALUES (?, NULL, ?, ?, ?)""",
-            (pitch_id, pitch.state.value, _now(), "ingested"),
+            (pitch_id, pitch.state.value, _now(), reason),
         )
     return pitch_id, True
 
@@ -117,3 +117,15 @@ def mark_possible_duplicate(conn: sqlite3.Connection, pitch_id: str, duplicate_o
             "UPDATE pitch SET possible_duplicate_of = ? WHERE pitch_id = ?",
             (duplicate_of, pitch_id),
         )
+
+
+
+def find_pitch_with_deck(conn: sqlite3.Connection, sha256: str, exclude_pitch_id: str) -> str | None:
+    """Return the earliest other pitch that has this deck attached, if any."""
+    row = conn.execute(
+        """SELECT a.pitch_id FROM attachment a JOIN pitch p ON p.pitch_id = a.pitch_id
+           WHERE a.sha256 = ? AND a.supported = 1 AND a.pitch_id != ?
+           ORDER BY p.rowid LIMIT 1""",
+        (sha256, exclude_pitch_id),
+    ).fetchone()
+    return row["pitch_id"] if row else None
