@@ -177,3 +177,13 @@ def insert_extraction(conn: sqlite3.Connection, values: dict) -> int:
     with conn:
         cursor = conn.execute(f"INSERT INTO extraction ({columns}) VALUES ({marks})", tuple(values.values()))
     return cursor.lastrowid
+
+
+def pitches_with_deck_named(conn: sqlite3.Connection, name: str) -> list[tuple[str, str]]:
+    """(pitch_id, filename) for every readable deck whose file name, without .pdf, matches `name`."""
+    rows = conn.execute(
+        "SELECT pitch_id, filename FROM attachment WHERE detected_type = 'pdf' AND supported = 1"
+    ).fetchall()
+    wanted = name.casefold().removesuffix(".pdf")
+    return [(r["pitch_id"], r["filename"]) for r in rows
+            if r["filename"].casefold().removesuffix(".pdf") == wanted]
