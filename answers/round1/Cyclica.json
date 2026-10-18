@@ -1,0 +1,112 @@
+{
+  "company_name": {
+    "value": "Cyclica",
+    "evidence": {
+      "quote": "CYCLICA",
+      "page": 1
+    }
+  },
+  "website": {
+    "value": "www.cyclicarx.com",
+    "evidence": {
+      "quote": "www.cyclicarx.com",
+      "page": 10
+    }
+  },
+  "one_liner": {
+    "value": "driving drug discovery, by doing more with AI",
+    "evidence": {
+      "quote": "driving drug discovery, by doing more with AI",
+      "page": 1
+    }
+  },
+  "sector": {
+    "value": "neo biotechnology",
+    "evidence": {
+      "quote": "a leading neo biotechnology company that is accelerating and improving drug discovery",
+      "page": 9
+    }
+  },
+  "stage": {
+    "value": "series_b_or_later",
+    "evidence": {
+      "quote": "in a Series B round of financing",
+      "page": 9
+    }
+  },
+  "round_size": {
+    "value": {
+      "amount": 20000000,
+      "currency": "CAD",
+      "status": "sought"
+    },
+    "evidence": {
+      "quote": "Seeking: CAD$20M in a Series B round of financing",
+      "page": 9
+    }
+  },
+  "headquarters": {
+    "value": "207 Queens Quay West, Toronto, Ontario M5J 1A7",
+    "evidence": {
+      "quote": "207 Queens Quay West Toronto, Ontario M5J 1A7",
+      "page": 10
+    }
+  },
+  "product": {
+    "value": "Ligand Design and Ligand Express, an integrated drug discovery platform powered by MatchMaker and POEM",
+    "evidence": {
+      "quote": "With Ligand Design and Ligand Express, we have designed advanced leads that minimize off-target activity while ensuring drug-like and ADMET properties.",
+      "page": 2
+    }
+  },
+  "ai_role": {
+    "value": "The platform is powered by MatchMaker, a deep learning model to identify drug-target interactions across the entire known proteome, and POEM, a general purpose machine learning engine implemented to design for ADMET properties",
+    "evidence": {
+      "quote": "powered by MatchMaker™, a deep learning model to identify drug-target interactions across the entire known proteome, and POEM™, a general purpose machine learning engine",
+      "page": 5
+    }
+  },
+  "team": [],
+  "traction": [
+    {
+      "kind": "partnership",
+      "text": "Tieös Pharmaceuticals collaboration",
+      "evidence": {
+        "quote": "Tieös Pharmaceuticals",
+        "page": 7
+      }
+    },
+    {
+      "kind": "partnership",
+      "text": "Merck KGaA Darmstadt, Germany",
+      "evidence": {
+        "quote": "Merck KGaA Darmstadt, Germany",
+        "page": 7
+      }
+    },
+    {
+      "kind": "partnership",
+      "text": "University of Toronto collaboration on novel EGFR inhibitors",
+      "evidence": {
+        "quote": "We are extremely pleased to be working with Cyclica",
+        "page": 7
+      }
+    },
+    {
+      "kind": "customers",
+      "text": "working with many top 50 pharma, biotech, and academia",
+      "evidence": {
+        "quote": "Validated and commercialized (2015 - ongoing); working with many top 50 pharma, biotech, and academia",
+        "page": 8
+      }
+    },
+    {
+      "kind": "other",
+      "text": "Technology developed and patented at Cyclica (2014 - ongoing); strong IP position",
+      "evidence": {
+        "quote": "Technology developed and patented at Cyclica (2014 - ongoing); strong IP position",
+        "page": 8
+      }
+    }
+  ]
+}

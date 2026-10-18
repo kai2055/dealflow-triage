@@ -1,0 +1,22 @@
+{
+  "company_name": {"value": "GridCure", "evidence": {"quote": "GRIDCURE", "page": 1}},
+  "website": {"value": "angel.co/gridcure", "evidence": {"quote": "angel.co/gridcure", "page": 2}},
+  "one_liner": {"value": "Powerful analytics for grid security", "evidence": {"quote": "POWERFUL ANALYTICS FOR GRID SECURITY", "page": 1}},
+  "sector": {"value": null, "evidence": null},
+  "stage": {"value": null, "evidence": null},
+  "round_size": {"value": null, "evidence": null},
+  "headquarters": {"value": null, "evidence": null},
+  "product": {"value": null, "evidence": null},
+  "ai_role": {"value": null, "evidence": null},
+  "team": [
+    {"name": "Tagg Jefferson", "role": null, "evidence": {"quote": "Tagg Jefferson", "page": 6}},
+    {"name": "Kim Montgomery", "role": "Ph. D Applied Mathematics", "evidence": {"quote": "Kim Montgomery", "page": 6}},
+    {"name": "Syed Aduham", "role": null, "evidence": {"quote": "Syed Aduham", "page": 6}},
+    {"name": "Zack Milosevich", "role": null, "evidence": {"quote": "Zack Milosevich", "page": 6}}
+  ],
+  "traction": [
+    {"kind": "contracts", "text": "$12M CONTRACTS", "evidence": {"quote": "$12M CONTRACTS", "page": 4}},
+    {"kind": "partnership", "text": "Burns McDonnell", "evidence": {"quote": "BURNS McDONNELL", "page": 4}},
+    {"kind": "pipeline", "text": "$105M PIPELINE", "evidence": {"quote": "$105M PIPELINE", "page": 4}}
+  ]
+}

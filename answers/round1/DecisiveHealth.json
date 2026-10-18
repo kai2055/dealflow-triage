@@ -1,0 +1,94 @@
+{
+  "company_name": {
+    "value": "Decisive Health",
+    "evidence": {
+      "quote": "DECISIVE HEALTH",
+      "page": 1
+    }
+  },
+  "website": {
+    "value": "angel.co/decisive-health",
+    "evidence": {
+      "quote": "angel.co/decisive-health",
+      "page": 2
+    }
+  },
+  "one_liner": {
+    "value": "Clear Medical Billing",
+    "evidence": {
+      "quote": "CLEAR MEDICAL BILLING",
+      "page": 1
+    }
+  },
+  "sector": {
+    "value": null,
+    "evidence": null
+  },
+  "stage": {
+    "value": null,
+    "evidence": null
+  },
+  "round_size": {
+    "value": null,
+    "evidence": null
+  },
+  "headquarters": {
+    "value": null,
+    "evidence": null
+  },
+  "product": {
+    "value": "Your medical bill",
+    "evidence": {
+      "quote": "Your medical bill",
+      "page": 6
+    }
+  },
+  "ai_role": {
+    "value": null,
+    "evidence": null
+  },
+  "team": [
+    {
+      "name": "Jonathan Shih",
+      "role": "Product",
+      "evidence": {
+        "quote": "Jonathan Shih, PhD Product",
+        "page": 10
+      }
+    },
+    {
+      "name": "Nathanael Rosidi",
+      "role": "Sales",
+      "evidence": {
+        "quote": "Nathanael Rosidi, PhD Sales",
+        "page": 10
+      }
+    },
+    {
+      "name": "Emily McGovern",
+      "role": "Growth Marketing",
+      "evidence": {
+        "quote": "Emily McGovern, MS, RD Growth Marketing",
+        "page": 10
+      }
+    }
+  ],
+  "traction": [
+    {
+      "kind": "revenue",
+      "text": "$45K Annual Revenue booked in 2 months of selling",
+      "evidence": {
+        "quote": "$45K Annual Revenue booked in 2 months of selling",
+        "page": 9
+      }
+    },
+    {
+      "kind": "other",
+      "text": "70% Profit Margins Per Patient insurance and billing query",
+      "evidence": {
+        "quote": "70% Proﬁt Margins Per Patient",
+        "page": 9
+      }
+    }
+  ]
+}
