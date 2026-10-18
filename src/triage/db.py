@@ -46,6 +46,35 @@ CREATE TABLE IF NOT EXISTS state_history (
     changed_at TEXT NOT NULL,
     reason     TEXT
 );
+
+CREATE TABLE IF NOT EXISTS extraction (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    pitch_id            TEXT NOT NULL REFERENCES pitch(pitch_id),
+    purpose             TEXT NOT NULL CHECK (purpose IN ('pipeline', 'bakeoff')),
+    started_at          TEXT NOT NULL,
+    outcome             TEXT NOT NULL CHECK (outcome IN ('extracted', 'failed')),
+    failure             TEXT,
+    failure_detail      TEXT,
+    prompt_version      TEXT NOT NULL,
+    requested_model     TEXT NOT NULL,
+    answered_model      TEXT,
+    provider            TEXT,
+    output_mode         TEXT NOT NULL,
+    temperature         REAL,
+    data_collection     TEXT NOT NULL,
+    input_tokens        INTEGER,
+    output_tokens       INTEGER,
+    cost                REAL,
+    completeness        REAL,
+    quotes_verified     INTEGER,
+    quotes_bad          INTEGER,
+    quotes_unverifiable INTEGER,
+    card_json           TEXT,
+    quote_report_json   TEXT,
+    raw_text            TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_extraction_pitch ON extraction(pitch_id);
 """
 
 
@@ -129,3 +158,22 @@ def find_pitch_with_deck(conn: sqlite3.Connection, sha256: str, exclude_pitch_id
         (sha256, exclude_pitch_id),
     ).fetchone()
     return row["pitch_id"] if row else None
+
+
+def decks_of_pitch(conn: sqlite3.Connection, pitch_id: str) -> list[str]:
+    """Fingerprints of the readable PDF decks attached to a pitch."""
+    rows = conn.execute(
+        """SELECT sha256 FROM attachment
+           WHERE pitch_id = ? AND detected_type = 'pdf' AND supported = 1 ORDER BY filename""",
+        (pitch_id,),
+    ).fetchall()
+    return [r["sha256"] for r in rows]
+
+
+def insert_extraction(conn: sqlite3.Connection, values: dict) -> int:
+    """Save one extraction attempt; attempts are never overwritten (decision 63). Returns its id."""
+    columns = ", ".join(values)
+    marks = ", ".join("?" for _ in values)
+    with conn:
+        cursor = conn.execute(f"INSERT INTO extraction ({columns}) VALUES ({marks})", tuple(values.values()))
+    return cursor.lastrowid

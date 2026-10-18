@@ -48,6 +48,11 @@ def test_currency_must_be_a_three_letter_code():
     with pytest.raises(ValidationError):
         PitchCard.model_validate(bad)
 
+def test_currency_can_be_empty_when_only_a_dollar_sign_is_written():
+    gridcure = {"round_size": {"value": {"amount": 95000, "currency": None, "status": "raised"},
+                               "evidence": {"quote": "$95K seed", "page": 8}}}
+    assert PitchCard.model_validate(gridcure).round_size.value.currency is None
+
 
 def test_stage_outside_the_list_is_refused():
     with pytest.raises(ValidationError):

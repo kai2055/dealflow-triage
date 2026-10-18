@@ -52,7 +52,7 @@ class RoundSize(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     amount: float = Field(gt=0)
-    currency: str = Field(pattern=r"^[A-Z]{3}$")
+    currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")  # None: only "$" or no currency written (decision 67)
     status: RoundStatus
 
 
