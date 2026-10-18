@@ -2,8 +2,10 @@
 
 import json
 import os
+import re
 import shutil
 import tempfile
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,6 +18,10 @@ DEFAULT_PAGES_DIR = Path("data/pages")
 DEFAULT_LONG_EDGE = 1568  # pixels on the longest side of each page picture
 DEFAULT_MAX_PAGES = 60
 DEFAULT_JPEG_QUALITY = 90  # decision 46 (amended): JPEG keeps uploads 3-5x smaller than PNG
+TEXT_CLEANUP = 1  # raise when clean_text() changes, so saved pages are rebuilt (decisions 81, 83)
+
+SPLIT_WORD_MARK = "\ufffe"  # PDFium's stand-in for a hyphen at a line end (finding 14)
+_WORD_GAPS = re.compile(r"([ \t]+)")  # spaces and tabs only: str.split() would also split on control codes
 
 
 class DeckError(Exception):
@@ -34,8 +40,9 @@ class DeckError(Exception):
 @dataclass(frozen=True)
 class Page:
     number: int  # starts at 1, the same number a card's evidence uses
-    text: str  # empty for image-only pages
+    text: str  # cleaned text; empty for image-only pages
     image_path: Path
+    text_complete: bool = True  # False when junk words were dropped from this page (decision 81)
 
     @property
     def has_text(self) -> bool:
@@ -54,6 +61,43 @@ def _page_files(folder: Path, number: int) -> tuple[Path, Path]:
     return folder / f"page-{number:03d}.jpg", folder / f"page-{number:03d}.txt"
 
 
+def _raw_file(folder: Path, number: int) -> Path:
+    return folder / f"page-{number:03d}.raw.txt"  # the text exactly as PDFium gave it
+
+
+def _is_junk(word: str) -> bool:
+    """A word with any control code in it (fonts without a character map, finding 12)."""
+    return any(unicodedata.category(c) == "Cc" for c in word)
+
+
+def clean_text(raw: str) -> tuple[str, int]:
+    """Return (cleaned text, number of junk words dropped).
+
+    Decision 83: PDFium's split-word mark goes back to what is printed, a hyphen and a line break.
+    Decision 81: every word holding a control code is dropped; clean words and lines stay as they were.
+    Tab and line break are spacing, not junk.
+    """
+    text = raw.replace("\r\n", "\n").replace("\r", "\n").replace(SPLIT_WORD_MARK, "-\n")
+    dropped = 0
+    lines = []
+    for line in text.split("\n"):
+        if not _is_junk(line.replace("\t", " ")):
+            lines.append(line)  # nothing to drop: keep the line exactly
+            continue
+        pieces = _WORD_GAPS.split(line)  # words at even positions, the gaps between them at odd ones
+        kept = []
+        for word in pieces[0::2]:
+            if not word:
+                continue
+            if _is_junk(word):
+                dropped += 1
+            else:
+                kept.append(word)
+        if kept:
+            lines.append(" ".join(kept))
+    return "\n".join(lines), dropped
+
+
 def _load(folder: Path, deck_sha256: str, long_edge: int, jpeg_quality: int) -> DeckPages | None:
     """Return the cached pages if the folder is complete and matches, else None."""
     try:
@@ -63,17 +107,21 @@ def _load(folder: Path, deck_sha256: str, long_edge: int, jpeg_quality: int) -> 
     expected = {"deck_sha256": deck_sha256, "long_edge": long_edge, "jpeg_quality": jpeg_quality}
     if any(manifest.get(key) != value for key, value in expected.items()):
         return None  # a different deck, size or quality (older PNG folders too): render again
+    if manifest.get("text_cleanup") != TEXT_CLEANUP:
+        return None  # saved before the current cleaning rules: render again (free)
+    incomplete = set(manifest.get("text_incomplete_pages", []))
     pages = []
     for number in range(1, manifest.get("page_count", 0) + 1):
         jpg, txt = _page_files(folder, number)
-        if not (jpg.exists() and txt.exists()):
+        if not (jpg.exists() and txt.exists() and _raw_file(folder, number).exists()):
             return None
-        pages.append(Page(number, txt.read_text(encoding="utf-8"), jpg))
+        pages.append(Page(number, txt.read_text(encoding="utf-8"), jpg, number not in incomplete))
     return DeckPages(deck_sha256, long_edge, jpeg_quality, tuple(pages)) if pages else None
 
 
-def _render(pdf_bytes: bytes, folder: Path, long_edge: int, max_pages: int, jpeg_quality: int) -> int:
-    """Write every page's picture and text into `folder`. Returns the page count."""
+def _render(pdf_bytes: bytes, folder: Path, long_edge: int, max_pages: int, jpeg_quality: int) -> tuple[int, list[int]]:
+    """Write every page's picture, raw text and cleaned text into `folder`.
+    Returns the page count and the numbers of pages that lost junk words."""
     try:
         pdf = pdfium.PdfDocument(pdf_bytes)
     except pdfium.PdfiumError as e:
@@ -89,6 +137,7 @@ def _render(pdf_bytes: bytes, folder: Path, long_edge: int, max_pages: int, jpeg
             raise DeckError("no_pages", "the PDF opens but has no pages")
         if count > max_pages:
             raise DeckError("too_many_pages", f"{count} pages, limit is {max_pages}")
+        incomplete = []
         for index in range(count):
             page = pdf[index]
             try:
@@ -97,15 +146,19 @@ def _render(pdf_bytes: bytes, folder: Path, long_edge: int, max_pages: int, jpeg
                 jpg, txt = _page_files(folder, index + 1)
                 picture = page.render(scale=scale).to_pil().convert("RGB")
                 picture.save(jpg, format="JPEG", quality=jpeg_quality)
-                text = page.get_textpage().get_text_range()
-                txt.write_text(text.replace("\r\n", "\n"), encoding="utf-8")
+                raw = page.get_textpage().get_text_range()
+                _raw_file(folder, index + 1).write_text(raw, encoding="utf-8", newline="")
+                text, dropped = clean_text(raw)
+                txt.write_text(text, encoding="utf-8", newline="")
+                if dropped:
+                    incomplete.append(index + 1)
             except DeckError:
                 raise
             except Exception as e:  # one bad page fails the whole deck (decision 48)
                 raise DeckError("unreadable", f"page {index + 1}: {e}") from e
             finally:
                 page.close()
-        return count
+        return count, incomplete
     finally:
         pdf.close()
 
@@ -131,12 +184,14 @@ def deck_to_pages(
 
     tmp = Path(tempfile.mkdtemp(dir=folder.parent, prefix=".tmp-"))
     try:
-        count = _render(pdf_bytes, tmp, long_edge, max_pages, jpeg_quality)
+        count, incomplete = _render(pdf_bytes, tmp, long_edge, max_pages, jpeg_quality)
         manifest = {
             "deck_sha256": deck_sha256,
             "long_edge": long_edge,
             "jpeg_quality": jpeg_quality,
             "page_count": count,
+            "text_cleanup": TEXT_CLEANUP,
+            "text_incomplete_pages": incomplete,
             "renderer": f"pypdfium2 {pdfium.version.PYPDFIUM_INFO}",
         }
         (tmp / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")

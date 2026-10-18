@@ -60,8 +60,8 @@ def test_line_end_hyphens_are_read_both_ways():
     pages = [Page(1, "We streamline opera-\ntions with a state-of-\nthe-art engine", NO_PICTURE)]
     assert only_check(card_with_one_fact("streamline operations", 1), pages).status == QuoteStatus.VERIFIED
     assert only_check(card_with_one_fact("state-of-the-art engine", 1), pages).status == QuoteStatus.VERIFIED
-    dash_list = [Page(1, "Revenue -\n$1M", NO_PICTURE)]
-    assert only_check(card_with_one_fact("Revenue -$1M", 1), dash_list).status == QuoteStatus.BAD_QUOTE
+    dash_list = [Page(1, "Revenue -\n$1M", NO_PICTURE)]  # a dash-list item quoted as a negative number
+    assert only_check(card_with_one_fact("Revenue -$1M", 1), dash_list).status == QuoteStatus.UNVERIFIABLE
 
 
 def test_every_quote_on_the_card_is_checked_and_counted():
@@ -88,3 +88,38 @@ def test_empty_card_has_nothing_to_check():
 
 def test_tidy_never_removes_letters_digits_or_punctuation():
     assert tidy("  $1.2M,\n\nSeed  ") == "$1.2m, seed"
+
+
+# Decision 82: all words on the page in another order -> unverifiable, never verified.
+
+GRIDCURE_PAGE_4 = "CONTRACTS\n$12M\nTRACTION\nPIPELINE\n$105M"  # text-layer order, finding 13
+
+
+def test_words_in_another_order_are_unverifiable():
+    check = only_check(card_with_one_fact("$12M contracts", 4), [Page(4, GRIDCURE_PAGE_4, NO_PICTURE)])
+    assert check.status == QuoteStatus.UNVERIFIABLE
+    assert check.reason == "words on page 4, order differs"
+
+
+def test_an_invented_pairing_is_never_verified_and_a_missing_number_is_a_bad_quote():
+    page = [Page(4, GRIDCURE_PAGE_4, NO_PICTURE)]
+    assert only_check(card_with_one_fact("$105M contracts", 4), page).status == QuoteStatus.UNVERIFIABLE
+    assert only_check(card_with_one_fact("$50M contracts", 4), page).status == QuoteStatus.BAD_QUOTE
+
+
+def test_punctuation_at_word_ends_is_ignored_when_looking_for_words():
+    page = [Page(1, "Pipeline: CONTRACTS, signed", NO_PICTURE)]
+    assert only_check(card_with_one_fact("signed contracts", 1), page).status == QuoteStatus.UNVERIFIABLE
+
+
+def test_a_word_used_more_often_than_the_page_has_it_is_a_bad_quote():
+    page = [Page(1, "growth in revenue", NO_PICTURE)]
+    assert only_check(card_with_one_fact("revenue growth growth", 1), page).status == QuoteStatus.BAD_QUOTE
+
+
+def test_incomplete_page_can_verify_but_never_accuse():
+    page = [Page(2, "CURRENT PAIN", NO_PICTURE, text_complete=False)]
+    assert only_check(card_with_one_fact("Current pain", 2), page).status == QuoteStatus.VERIFIED
+    check = only_check(card_with_one_fact("Utilities lose $50M a year", 2), page)
+    assert check.status == QuoteStatus.UNVERIFIABLE
+    assert check.reason == "not found; page 2 text is incomplete (junk removed)"

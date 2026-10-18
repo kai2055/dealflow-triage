@@ -2,6 +2,7 @@
 
 import re
 import unicodedata
+from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
 from typing import Sequence
@@ -13,7 +14,7 @@ from triage.pages import Page
 class QuoteStatus(str, Enum):
     VERIFIED = "verified"
     BAD_QUOTE = "bad_quote"
-    UNVERIFIABLE = "unverifiable"  # the page has no text layer (decision 60)
+    UNVERIFIABLE = "unverifiable"  # can't confirm and can't prove wrong (decisions 60, 81, 82)
 
 
 @dataclass(frozen=True)
@@ -57,6 +58,29 @@ def _page_versions(text: str) -> set[str]:
     return {tidy(_LINE_END_HYPHEN.sub("", text)), tidy(_LINE_END_HYPHEN.sub("-", text))}
 
 
+def _bare(word: str) -> str:
+    """A word without punctuation or symbols stuck to its start or end: '$12m,' -> '12m'."""
+    start, end = 0, len(word)
+    while start < end and unicodedata.category(word[start])[0] in "PS":
+        start += 1
+    while end > start and unicodedata.category(word[end - 1])[0] in "PS":
+        end -= 1
+    return word[start:end]
+
+
+def _words(tidied: str) -> Counter:
+    """How often each bare word appears; words that were only punctuation are left out."""
+    return Counter(w for w in map(_bare, tidied.split(" ")) if w)
+
+
+def _words_all_present(quote: str, versions: set[str]) -> bool:
+    """Decision 82: every quote word is on the page as a whole word, at least as often as in
+    the quote, anywhere on the page. Order is ignored because the text layer's order can't be
+    trusted (finding 13); this can only make a quote unverifiable, never verified."""
+    needed = _words(quote)
+    return any(not (needed - _words(version)) for version in versions)
+
+
 def _check(field: str, evidence: Evidence, pages: dict[int, Page]) -> QuoteCheck:
     page = pages.get(evidence.page)
     if page is None:
@@ -66,9 +90,16 @@ def _check(field: str, evidence: Evidence, pages: dict[int, Page]) -> QuoteCheck
         return QuoteCheck(field, evidence.quote, evidence.page, QuoteStatus.UNVERIFIABLE,
                           f"page {evidence.page} has no text layer")
     quote = tidy(evidence.quote)
-    if any(quote in version for version in _page_versions(page.text)):
+    versions = _page_versions(page.text)
+    if any(quote in version for version in versions):
         return QuoteCheck(field, evidence.quote, evidence.page, QuoteStatus.VERIFIED,
                           f"found on page {evidence.page}")
+    if _words_all_present(quote, versions):
+        return QuoteCheck(field, evidence.quote, evidence.page, QuoteStatus.UNVERIFIABLE,
+                          f"words on page {evidence.page}, order differs")
+    if not page.text_complete:  # junk was dropped here, so a missing word proves nothing (decision 81)
+        return QuoteCheck(field, evidence.quote, evidence.page, QuoteStatus.UNVERIFIABLE,
+                          f"not found; page {evidence.page} text is incomplete (junk removed)")
     return QuoteCheck(field, evidence.quote, evidence.page, QuoteStatus.BAD_QUOTE,
                       f"not on page {evidence.page}")
 
