@@ -1,0 +1,16 @@
+# Round 1: the three strong models on three dev decks.
+# Settings per model come from OpenRouter's model list, checked on 18 Oct (decision 73).
+prompt = "pitch_card_v1"
+decks = ["DecisiveHealth", "Cyclica", "Gridcure"]
+
+[[model]]
+name = "anthropic/claude-sonnet-5.5"
+temperature = "none"  # rejects a temperature
+
+[[model]]
+name = "openai/gpt-6.1-sol"
+temperature = "none"  # rejects a temperature
+
+[[model]]
+name = "google/gemini-4-argon"
+temperature = "0"

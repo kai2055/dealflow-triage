@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from triage import cost, db
+from triage.bakeoff import PlanError, load_plan, run_plan
 from triage.extract import DEFAULT_PROMPT, extract_pitch
 from triage.intake.folder import list_files, read_file
 from triage.model import OpenAICompatibleClient, SettingsError, load_settings
@@ -114,6 +115,27 @@ def extract_command(deck: str, model: str | None, temperature: str | None, purpo
         conn.close()
 
 
+def bakeoff_command(plan_path: Path, again: bool, db_path: Path, raw_dir: Path, pages_dir: Path,
+                    env_file: Path, ask=input, prices=cost.fetch_prices,
+                    make_client=OpenAICompatibleClient) -> int:
+    """Run a bake-off plan. Exit codes: 0 done, 1 some attempts failed, 2 cannot start,
+    3 nothing sent, 4 stopped at the spending limit."""
+    try:
+        settings = load_settings(env_file)
+        plan = load_plan(plan_path)
+    except (SettingsError, PlanError) as e:
+        print(f"Cannot start: {e}")
+        return 2
+    conn = db.connect(db_path)
+    try:
+        return run_plan(conn, RawStore(raw_dir), plan, settings, pages_dir, again, ask, prices, make_client)
+    except PlanError as e:
+        print(f"Cannot start: {e}")
+        return 2
+    finally:
+        conn.close()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="triage", description="Dealflow triage prototype")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -132,8 +154,17 @@ def main(argv: list[str] | None = None) -> int:
     extract_cmd.add_argument("--raw", type=Path, default=DEFAULT_RAW_DIR)
     extract_cmd.add_argument("--pages", type=Path, default=DEFAULT_PAGES_DIR)
     extract_cmd.add_argument("--env", type=Path, default=Path(".env"))
+    bakeoff_cmd = commands.add_parser("bakeoff", help="Run every model in a plan on every deck (asks once)")
+    bakeoff_cmd.add_argument("plan", type=Path, help="plan file, e.g. bakeoff/round1.toml")
+    bakeoff_cmd.add_argument("--again", action="store_true", help="repeat combinations that already succeeded")
+    bakeoff_cmd.add_argument("--db", type=Path, default=db.DEFAULT_DB_PATH)
+    bakeoff_cmd.add_argument("--raw", type=Path, default=DEFAULT_RAW_DIR)
+    bakeoff_cmd.add_argument("--pages", type=Path, default=DEFAULT_PAGES_DIR)
+    bakeoff_cmd.add_argument("--env", type=Path, default=Path(".env"))
     args = parser.parse_args(argv)
 
+    if args.command == "bakeoff":
+        return bakeoff_command(args.plan, args.again, args.db, args.raw, args.pages, args.env)
     if args.command == "extract":
         return extract_command(args.deck, args.model, args.temperature, args.purpose, args.prompt,
                                args.db, args.raw, args.pages, args.env)
