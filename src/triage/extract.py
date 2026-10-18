@@ -118,6 +118,7 @@ def extract_pitch(
             completeness=card.completeness(), card_json=card.model_dump_json(),
             quote_report_json=json.dumps([asdict(c) for c in report.checks]),
             quotes_verified=report.count(QuoteStatus.VERIFIED),
+            quotes_not_in_text=report.count(QuoteStatus.NOT_IN_TEXT),
             quotes_bad=report.count(QuoteStatus.BAD_QUOTE),
             quotes_unverifiable=report.count(QuoteStatus.UNVERIFIABLE),
         )

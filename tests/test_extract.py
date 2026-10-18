@@ -131,7 +131,8 @@ def test_good_answer_is_saved_with_receipt_and_quote_counts(setup):
     row = only_attempt(conn)
     assert (row["purpose"], row["prompt_version"], row["requested_model"]) == ("pipeline", "pitch_card_v1", "fake/model")
     assert (row["answered_model"], row["provider"], row["cost"]) == ("fake/model-2026", "FakeProvider", 0.01)
-    assert (row["quotes_verified"], row["quotes_bad"], row["quotes_unverifiable"]) == (3, 0, 0)
+    counts = ("quotes_verified", "quotes_not_in_text", "quotes_unverifiable", "quotes_bad")
+    assert tuple(row[c] for c in counts) == (3, 0, 0, 0)
     assert json.loads(row["quote_report_json"])[0]["status"] == "verified"
     assert state_of(conn, pitch_id) == "extracted"
 
@@ -155,7 +156,7 @@ def test_bakeoff_attempt_is_saved_but_never_moves_the_pitch(setup):
     assert state_of(conn, pitch_id) == "received"
 
 
-def test_bad_quote_is_counted_but_the_card_is_kept(setup):
+def test_quote_not_in_text_is_counted_but_the_card_is_kept(setup):
     conn, add_pitch, run = setup
     pitch_id = add_pitch(make_pdf(DECK_PAGES))
     invented = answer(company_name=fact("Cyclica", "CYCLICA", 1),
@@ -163,7 +164,8 @@ def test_bad_quote_is_counted_but_the_card_is_kept(setup):
                                  "evidence": {"quote": "$5M in revenue", "page": 2}}])
     attempt = run(pitch_id, FakeModel(invented))
     assert attempt.outcome == "extracted"
-    assert (only_attempt(conn)["quotes_verified"], only_attempt(conn)["quotes_bad"]) == (1, 1)
+    row = only_attempt(conn)
+    assert (row["quotes_verified"], row["quotes_not_in_text"], row["quotes_bad"]) == (1, 1, 0)
 
 
 def test_answer_that_breaks_the_card_fails_and_keeps_the_raw_text(setup):

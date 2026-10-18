@@ -105,6 +105,8 @@ def test_one_yes_runs_every_model_on_every_deck_as_bakeoff(world):
     assert count(conn, "SELECT COUNT(*) FROM extraction WHERE purpose = 'bakeoff'") == 4
     assert count(conn, "SELECT COUNT(*) FROM pitch WHERE state = 'received'") == 2  # states untouched
     assert {(m.settings.model, m.settings.temperature) for m in made} == {("a/strong", None), ("b/strong", 0.0)}
+    results = [line for line in lines if line.startswith("  [")]
+    assert len(results) == 4 and all("not in text /" in line and " bad." in line for line in results)
 
 
 def test_anything_but_yes_sends_nothing(world):

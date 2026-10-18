@@ -24,17 +24,17 @@ def test_honest_quote_with_line_breaks_and_capitals_is_verified():
     assert check.status == QuoteStatus.VERIFIED
 
 
-def test_changed_number_is_a_bad_quote():
+def test_changed_number_is_never_verified():
     pages = [Page(1, "We have signed $1.2M in contracts", NO_PICTURE)]
     check = only_check(card_with_one_fact("signed $12M in contracts", 1), pages)
-    assert check.status == QuoteStatus.BAD_QUOTE  # one dot apart, still caught
+    assert check.status == QuoteStatus.NOT_IN_TEXT  # one dot apart, still caught
 
 
-def test_quote_on_the_wrong_page_is_a_bad_quote():
+def test_quote_on_the_wrong_page_is_not_in_text():
     pages = [Page(1, "Team", NO_PICTURE), Page(2, "Raising CAD 20M", NO_PICTURE)]
     check = only_check(card_with_one_fact("Raising CAD 20M", 1), pages)
-    assert check.status == QuoteStatus.BAD_QUOTE
-    assert check.reason == "not on page 1"
+    assert check.status == QuoteStatus.NOT_IN_TEXT
+    assert check.reason == "not in the text of page 1"
 
 
 def test_page_that_does_not_exist_is_a_bad_quote():
@@ -78,8 +78,9 @@ def test_every_quote_on_the_card_is_checked_and_counted():
     report = check_quotes(card, pages)
     assert [c.field for c in report.checks] == ["company_name", "team[0]", "traction[0]", "traction[1]"]
     assert report.count(QuoteStatus.VERIFIED) == 2
-    assert report.count(QuoteStatus.BAD_QUOTE) == 1
+    assert report.count(QuoteStatus.NOT_IN_TEXT) == 1
     assert report.count(QuoteStatus.UNVERIFIABLE) == 1
+    assert report.count(QuoteStatus.BAD_QUOTE) == 0
 
 
 def test_empty_card_has_nothing_to_check():
@@ -101,10 +102,10 @@ def test_words_in_another_order_are_unverifiable():
     assert check.reason == "words on page 4, order differs"
 
 
-def test_an_invented_pairing_is_never_verified_and_a_missing_number_is_a_bad_quote():
+def test_an_invented_pairing_is_never_verified_and_a_missing_number_is_not_in_text():
     page = [Page(4, GRIDCURE_PAGE_4, NO_PICTURE)]
     assert only_check(card_with_one_fact("$105M contracts", 4), page).status == QuoteStatus.UNVERIFIABLE
-    assert only_check(card_with_one_fact("$50M contracts", 4), page).status == QuoteStatus.BAD_QUOTE
+    assert only_check(card_with_one_fact("$50M contracts", 4), page).status == QuoteStatus.NOT_IN_TEXT
 
 
 def test_punctuation_at_word_ends_is_ignored_when_looking_for_words():
@@ -112,14 +113,22 @@ def test_punctuation_at_word_ends_is_ignored_when_looking_for_words():
     assert only_check(card_with_one_fact("signed contracts", 1), page).status == QuoteStatus.UNVERIFIABLE
 
 
-def test_a_word_used_more_often_than_the_page_has_it_is_a_bad_quote():
+def test_a_word_used_more_often_than_the_page_has_it_is_not_in_text():
     page = [Page(1, "growth in revenue", NO_PICTURE)]
-    assert only_check(card_with_one_fact("revenue growth growth", 1), page).status == QuoteStatus.BAD_QUOTE
+    assert only_check(card_with_one_fact("revenue growth growth", 1), page).status == QuoteStatus.NOT_IN_TEXT
 
 
-def test_incomplete_page_can_verify_but_never_accuse():
+def test_incomplete_page_can_verify_and_says_why_a_quote_may_be_missing():
     page = [Page(2, "CURRENT PAIN", NO_PICTURE, text_complete=False)]
     assert only_check(card_with_one_fact("Current pain", 2), page).status == QuoteStatus.VERIFIED
     check = only_check(card_with_one_fact("Utilities lose $50M a year", 2), page)
-    assert check.status == QuoteStatus.UNVERIFIABLE
-    assert check.reason == "not found; page 2 text is incomplete (junk removed)"
+    assert check.status == QuoteStatus.NOT_IN_TEXT
+    assert check.reason == "not in the text of page 2, which is incomplete (junk removed)"
+
+
+# Decision 84: words inside pictures never reach the text layer (finding 15), so missing is not proof.
+
+def test_a_quote_read_from_a_picture_is_not_in_text_never_a_bad_quote():
+    page_6 = [Page(6, "PRODUCT angel.co/decisive-health \nfounders@decisivehealth.com ", NO_PICTURE)]
+    check = only_check(card_with_one_fact("Your medical bill", 6), page_6)  # Decisive Health's bill mock-up
+    assert check.status == QuoteStatus.NOT_IN_TEXT

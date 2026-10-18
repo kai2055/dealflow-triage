@@ -104,8 +104,8 @@ def extract_command(deck: str, model: str | None, temperature: str | None, purpo
         row = conn.execute("SELECT * FROM extraction WHERE id = ?", (attempt.id,)).fetchone()
         if attempt.outcome == "extracted":
             print(f"Attempt {attempt.id}: extracted. Completeness {row['completeness']:.0%}. Quotes: "
-                  f"{row['quotes_verified']} verified, {row['quotes_bad']} bad, "
-                  f"{row['quotes_unverifiable']} unverifiable.")
+                  f"{row['quotes_verified']} verified, {row['quotes_not_in_text']} not in text, "
+                  f"{row['quotes_unverifiable']} unverifiable, {row['quotes_bad']} bad.")
         else:
             print(f"Attempt {attempt.id}: failed ({attempt.failure}): {row['failure_detail']}")
         spent = f"${row['cost']:.4f}" if row["cost"] is not None else "not reported"

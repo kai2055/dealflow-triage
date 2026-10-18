@@ -75,7 +75,9 @@ def test_yes_runs_the_model_once_and_saves_the_attempt(world, capsys):
     code, made, questions = run(world)
     assert code == 0 and len(made[0].calls) == 1 and attempts(world) == 1
     assert "2 pages" in questions[0] and "about $0.1" in questions[0]  # (2 x 1,900 + 2,500) x $2/M + $0.10
-    assert "Real cost: $0.0100" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "Real cost: $0.0100" in out
+    assert "verified, 0 not in text, 0 unverifiable, 0 bad." in out  # all four counts, every time (decision 84)
 
 
 def test_anything_but_yes_sends_nothing(world, capsys):

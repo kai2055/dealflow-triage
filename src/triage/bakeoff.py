@@ -135,8 +135,8 @@ def run_plan(conn: sqlite3.Connection, store: RawStore, plan: Plan, base: ModelS
         elif guess and row["answered_model"]:  # a call happened but no cost was reported: count the worst case
             spent += guess.worst_case
         if attempt.outcome == "extracted":
-            result = (f"extracted, {row['quotes_verified']} verified / {row['quotes_bad']} bad / "
-                      f"{row['quotes_unverifiable']} unverifiable")
+            result = (f"extracted, {row['quotes_verified']} verified / {row['quotes_not_in_text']} not in text / "
+                      f"{row['quotes_unverifiable']} unverifiable / {row['quotes_bad']} bad")
         else:
             failed += 1
             result = f"failed ({attempt.failure})"

@@ -97,3 +97,16 @@ def test_data_survives_reconnecting(tmp_path):
     second = connect(path)
     assert second.execute("SELECT COUNT(*) FROM pitch").fetchone()[0] == 1
     second.close()
+
+def test_old_database_gets_the_new_column_and_keeps_its_pitches(tmp_path):
+    path = tmp_path / "old.db"
+    first = connect(path)
+    insert_pitch(first, make_pitch())
+    first.execute("ALTER TABLE extraction DROP COLUMN quotes_not_in_text")  # a file made before decision 84
+    first.close()
+    upgraded = connect(path)
+    columns = {row["name"] for row in upgraded.execute("PRAGMA table_info(extraction)")}
+    assert "quotes_not_in_text" in columns
+    assert upgraded.execute("SELECT COUNT(*) FROM pitch").fetchone()[0] == 1
+    upgraded.close()
+    connect(path).close()  # a second upgrade finds nothing to add and does not fail

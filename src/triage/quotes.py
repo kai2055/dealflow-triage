@@ -12,9 +12,10 @@ from triage.pages import Page
 
 
 class QuoteStatus(str, Enum):
-    VERIFIED = "verified"
-    BAD_QUOTE = "bad_quote"
-    UNVERIFIABLE = "unverifiable"  # can't confirm and can't prove wrong (decisions 60, 81, 82)
+    VERIFIED = "verified"  # found on the page, word for word after tidying (decision 59)
+    NOT_IN_TEXT = "not_in_text"  # quote words missing from the page's text: a person should look (decision 84)
+    UNVERIFIABLE = "unverifiable"  # no text layer, or the words are there in another order (decisions 60, 82)
+    BAD_QUOTE = "bad_quote"  # proven wrong: the page does not exist (decision 84)
 
 
 @dataclass(frozen=True)
@@ -97,11 +98,10 @@ def _check(field: str, evidence: Evidence, pages: dict[int, Page]) -> QuoteCheck
     if _words_all_present(quote, versions):
         return QuoteCheck(field, evidence.quote, evidence.page, QuoteStatus.UNVERIFIABLE,
                           f"words on page {evidence.page}, order differs")
-    if not page.text_complete:  # junk was dropped here, so a missing word proves nothing (decision 81)
-        return QuoteCheck(field, evidence.quote, evidence.page, QuoteStatus.UNVERIFIABLE,
-                          f"not found; page {evidence.page} text is incomplete (junk removed)")
-    return QuoteCheck(field, evidence.quote, evidence.page, QuoteStatus.BAD_QUOTE,
-                      f"not on page {evidence.page}")
+        # Words inside pictures never reach the text layer (finding 15), so a missing word is not proof.
+    incomplete = "" if page.text_complete else ", which is incomplete (junk removed)"
+    return QuoteCheck(field, evidence.quote, evidence.page, QuoteStatus.NOT_IN_TEXT,
+                      f"not in the text of page {evidence.page}{incomplete}")
 
 
 def check_quotes(card: PitchCard, pages: Sequence[Page]) -> QuoteReport:

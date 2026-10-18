@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS extraction (
     cost                REAL,
     completeness        REAL,
     quotes_verified     INTEGER,
+    quotes_not_in_text  INTEGER,
     quotes_bad          INTEGER,
     quotes_unverifiable INTEGER,
     card_json           TEXT,
@@ -82,6 +83,22 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# Columns added after a table was first created. CREATE TABLE IF NOT EXISTS never changes an
+# existing table, so connect() adds any of these that an older database file is missing.
+ADDED_COLUMNS = {
+    "extraction": {"quotes_not_in_text": "INTEGER"},  # decision 84
+}
+
+
+def _add_missing_columns(conn: sqlite3.Connection) -> None:
+    for table, columns in ADDED_COLUMNS.items():
+        present = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+        for name, sql_type in columns.items():
+            if name not in present:
+                with conn:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {sql_type}")
+
+
 def connect(path: Path = DEFAULT_DB_PATH) -> sqlite3.Connection:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -89,6 +106,7 @@ def connect(path: Path = DEFAULT_DB_PATH) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(SCHEMA)
+    _add_missing_columns(conn)  # safe to run every time: only adds what is missing
     return conn
 
 
