@@ -59,7 +59,7 @@ def test_picture_long_edge_matches_the_setting(store, pages_dir):
     sha = store.save(make_pdf(["Wide slide"], width=960, height=540))
     deck = deck_to_pages(store, sha, pages_dir, long_edge=1568)
     with Image.open(deck.pages[0].image_path) as img:
-        assert img.format == "PNG"
+        assert img.format == "JPEG"
         assert max(img.size) == 1568
 
 
@@ -125,3 +125,14 @@ def test_deck_over_the_page_limit_is_refused(store, pages_dir):
         deck_to_pages(store, sha, pages_dir, max_pages=2)
     assert caught.value.reason == "too_many_pages"
     assert list((pages_dir / sha).iterdir()) == []
+
+
+
+
+
+def test_changed_quality_renders_again(store, pages_dir):
+    sha = store.save(make_pdf(["Quality"]))
+    deck_to_pages(store, sha, pages_dir, jpeg_quality=90)
+    redone = deck_to_pages(store, sha, pages_dir, jpeg_quality=60)
+    assert redone.jpeg_quality == 60
+    assert redone.pages[0].image_path.suffix == ".jpg"
