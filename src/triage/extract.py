@@ -10,8 +10,6 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from triage import db
 from triage.card import PitchCard
 from triage.model import CallRecord, ModelCallError, ModelClient, ModelSettings
@@ -21,17 +19,26 @@ from triage.quotes import QuoteReport, QuoteStatus, check_quotes
 from triage.storage import RawStore
 
 PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
-DEFAULT_PROMPT = "pitch_card_v1"
+DEFAULT_PROMPT = "pitch_card_v2"  # v2: whole facts are null when empty (decision 92)
 PURPOSES = ("pipeline", "bakeoff")
+
+SINGLE_FACTS = ("company_name", "website", "one_liner", "sector", "stage", "round_size",
+                "headquarters", "product", "ai_role")
 
 # Rules strict mode can't express; PitchCard still enforces every one of them in code (decision 65).
 _NOT_FOR_STRICT_MODE = {"title", "default", "minLength", "maxLength", "minimum", "maximum",
                         "exclusiveMinimum", "exclusiveMaximum", "pattern", "format", "minItems", "maxItems"}
 
 
+def _not_null(node: dict) -> dict:
+    """The branch of 'this or null' that is not null."""
+    return next(branch for branch in node["anyOf"] if branch.get("type") != "null")
+
+
 def strict_layout() -> dict:
     """The card's layout, simplified for strict mode: every field required (empty = null), no rules,
-    no cross-references. Derived from PitchCard, so the two can never disagree (decision 65)."""
+    no cross-references. Derived from PitchCard, so the two can never disagree (decision 65).
+    A single fact is null as a whole, or a value with its evidence, both filled (decision 92)."""
     schema = PitchCard.model_json_schema()
     parts = schema.pop("$defs", {})
 
@@ -48,7 +55,35 @@ def strict_layout() -> dict:
             out["additionalProperties"] = False
         return out
 
-    return simplify(schema)
+    layout = simplify(schema)
+    for name in SINGLE_FACTS:
+        fact = layout["properties"][name]
+        filled = {"type": "object", "properties": {"value": _not_null(fact["properties"]["value"]),
+                                                   "evidence": _not_null(fact["properties"]["evidence"])},
+                  "required": ["value", "evidence"], "additionalProperties": False}
+        layout["properties"][name] = {"anyOf": [filled, {"type": "null"}]}
+    return layout
+
+
+def count_emptyable(node) -> int:
+    """How many fields in a layout may be null or one of several types (finding 16)."""
+    if isinstance(node, list):
+        return sum(count_emptyable(item) for item in node)
+    if not isinstance(node, dict):
+        return 0
+    own = 1 if isinstance(node.get("type"), list) or "anyOf" in node else 0
+    return own + sum(count_emptyable(value) for value in node.values())
+
+
+def card_from_answer(raw_text: str) -> PitchCard:
+    """The model's answer as a PitchCard: a null fact becomes an empty Fact (decision 92).
+    Raises ValueError (ValidationError included) when the answer is not a valid card."""
+    data = json.loads(raw_text)
+    if isinstance(data, dict):
+        for name in SINGLE_FACTS:
+            if name in data and data[name] is None:
+                data[name] = {"value": None, "evidence": None}
+    return PitchCard.model_validate(data)
 
 
 def load_instructions(version: str = DEFAULT_PROMPT, folder: Path = PROMPTS_DIR) -> str:
@@ -101,13 +136,13 @@ def extract_pitch(
             pages = deck_to_pages(store, decks[0], pages_root).pages
             result = client.read(instructions, pages, "pitch_card", strict_layout())
             record, raw_text = result.record, result.raw_text
-            card = PitchCard.model_validate_json(raw_text)  # the code decides (decision 55)
+            card = card_from_answer(raw_text)  # the code decides (decision 55)
             report = check_quotes(card, pages)  # the card itself is never changed (decision 61)
         except DeckError as e:
             failure, detail = f"deck_{e.reason}", e.detail
         except ModelCallError as e:
             failure, detail = f"model_{e.kind}", e.detail
-        except ValidationError as e:
+        except ValueError as e:  # not JSON, or JSON that is not a valid card (ValidationError is a ValueError)
             failure, detail = "invalid_card", str(e)
 
     if record:

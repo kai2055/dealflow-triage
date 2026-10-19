@@ -1,6 +1,7 @@
 # Round 1: the three strong models on three dev decks.
 # Settings per model come from OpenRouter's model list, checked on 18 Oct (decision 73).
-prompt = "pitch_card_v1"
+# Instructions v2 since 19 Oct (decision 92); v1 attempts stay in the database as a separate experiment.
+prompt = "pitch_card_v2"
 decks = ["DecisiveHealth", "Cyclica", "Gridcure"]
 
 [[model]]

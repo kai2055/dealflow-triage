@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from test_pages import make_pdf
 from triage.card import PitchCard
 from triage.db import connect, insert_pitch
-from triage.extract import extract_pitch, load_instructions, strict_layout
+from triage.extract import card_from_answer, count_emptyable, extract_pitch, load_instructions, strict_layout
 from triage.model import CallRecord, ModelCallError, ModelResult, ModelSettings
 from triage.models import Attachment, RawPitch
 from triage.storage import RawStore
@@ -38,14 +38,10 @@ def fact(value, quote, page):
     return {"value": value, "evidence": {"quote": quote, "page": page}}
 
 
-def empty_fact():
-    return {"value": None, "evidence": None}
-
-
 def answer(**facts):
-    """A full answer in the strict layout: every field present, unfilled ones null."""
-    card = {name: empty_fact() for name in ["company_name", "website", "one_liner", "sector", "stage",
-                                            "round_size", "headquarters", "product", "ai_role"]}
+    """A full answer in the strict layout: every field present, unfilled facts null (decision 92)."""
+    card = {name: None for name in ["company_name", "website", "one_liner", "sector", "stage",
+                                    "round_size", "headquarters", "product", "ai_role"]}
     card.update(team=[], traction=[])
     card.update(facts)
     return json.dumps(card)
@@ -112,13 +108,37 @@ def test_strict_layout_has_no_rules_or_cross_references():
 
 
 def test_answer_in_the_strict_layout_becomes_a_card_and_the_card_still_enforces_its_rules():
-    assert PitchCard.model_validate_json(GOOD).completeness() == round(3 / 11, 2)
+    card = card_from_answer(GOOD)
+    assert card.completeness() == round(3 / 11, 2)
+    assert (card.website.value, card.website.evidence) == (None, None)  # a null fact is an empty Fact
     with pytest.raises(ValidationError):  # page 0: allowed by the simple layout, refused by the card
-        PitchCard.model_validate_json(answer(company_name=fact("Cyclica", "CYCLICA", 0)))
+        card_from_answer(answer(company_name=fact("Cyclica", "CYCLICA", 0)))
 
 
-def test_instructions_v1_exist_and_name_the_page_labels():
-    assert "--- Page N ---" in load_instructions("pitch_card_v1")
+def test_layout_stays_under_the_limit_on_emptyable_fields():
+    assert count_emptyable(strict_layout()) == 11  # Anthropic models refuse more than 16 (finding 16)
+
+
+def test_a_single_fact_is_null_or_filled_as_a_whole():
+    filled, empty = strict_layout()["properties"]["company_name"]["anyOf"]
+    assert empty == {"type": "null"}
+    assert filled["required"] == ["value", "evidence"]
+    assert filled["properties"]["value"] == {"type": "string"}  # no null inside: never half-filled
+    assert filled["properties"]["evidence"]["type"] == "object"
+
+
+def test_an_answer_in_the_old_v1_shape_still_becomes_a_card():
+    old_shape = json.loads(GOOD)
+    old_shape["website"] = {"value": None, "evidence": None}
+    assert card_from_answer(json.dumps(old_shape)).company_name.value == "Cyclica"
+
+
+def test_instructions_v2_differ_from_v1_only_in_rule_3():
+    v1, v2 = load_instructions("pitch_card_v1").splitlines(), load_instructions("pitch_card_v2").splitlines()
+    changed = [(a, b) for a, b in zip(v1, v2) if a != b]
+    assert len(v1) == len(v2) and len(changed) == 1
+    assert changed[0][1].startswith("3. If the deck does not state something, set the whole field to null.")
+    assert "--- Page N ---" in load_instructions("pitch_card_v2")
 
 
 # --- The extraction step ---
@@ -129,7 +149,7 @@ def test_good_answer_is_saved_with_receipt_and_quote_counts(setup):
     attempt = run(pitch_id, FakeModel(GOOD))
     assert attempt.outcome == "extracted" and attempt.card.company_name.value == "Cyclica"
     row = only_attempt(conn)
-    assert (row["purpose"], row["prompt_version"], row["requested_model"]) == ("pipeline", "pitch_card_v1", "fake/model")
+    assert (row["purpose"], row["prompt_version"], row["requested_model"]) == ("pipeline", "pitch_card_v2", "fake/model")
     assert (row["answered_model"], row["provider"], row["cost"]) == ("fake/model-2026", "FakeProvider", 0.01)
     counts = ("quotes_verified", "quotes_not_in_text", "quotes_unverifiable", "quotes_bad")
     assert tuple(row[c] for c in counts) == (3, 0, 0, 0)
@@ -137,12 +157,12 @@ def test_good_answer_is_saved_with_receipt_and_quote_counts(setup):
     assert state_of(conn, pitch_id) == "extracted"
 
 
-def test_model_receives_v1_instructions_the_strict_layout_and_every_page(setup):
+def test_model_receives_v2_instructions_the_strict_layout_and_every_page(setup):
     conn, add_pitch, run = setup
     model = FakeModel(GOOD)
     run(add_pitch(make_pdf(DECK_PAGES)), model)
     [call] = model.calls
-    assert call["instructions"] == load_instructions("pitch_card_v1")
+    assert call["instructions"] == load_instructions("pitch_card_v2")
     assert call["schema"] == strict_layout()
     assert [p.number for p in call["pages"]] == [1, 2]
 
@@ -177,6 +197,13 @@ def test_answer_that_breaks_the_card_fails_and_keeps_the_raw_text(setup):
     assert (attempt.failure, row["outcome"], row["raw_text"]) == ("invalid_card", "failed", broken)
     assert row["provider"] == "FakeProvider"  # the receipt is kept too
     assert state_of(conn, pitch_id) == "failed"
+
+
+def test_answer_that_is_not_json_fails_as_invalid_card(setup):
+    conn, add_pitch, run = setup
+    attempt = run(add_pitch(make_pdf(DECK_PAGES)), FakeModel("Here is the card: {"))
+    row = only_attempt(conn)
+    assert (attempt.failure, row["raw_text"]) == ("invalid_card", "Here is the card: {")
 
 
 def test_model_error_is_saved_with_what_was_asked(setup):
