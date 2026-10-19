@@ -1,4 +1,4 @@
-"""Command line: `triage ingest --folder data/inbox` and `triage extract --deck Cyclica`."""
+"""Command line: `triage ingest`, `triage extract`, `triage bakeoff` and `triage score`."""
 
 import argparse
 import dataclasses
@@ -13,6 +13,7 @@ from triage.intake.folder import list_files, read_file
 from triage.model import OpenAICompatibleClient, SettingsError, load_settings
 from triage.models import PitchState
 from triage.pages import DEFAULT_PAGES_DIR, DeckError, deck_to_pages
+from triage.score import score_plan
 from triage.storage import DEFAULT_RAW_DIR, RawStore
 
 
@@ -135,6 +136,19 @@ def bakeoff_command(plan_path: Path, again: bool, db_path: Path, raw_dir: Path, 
     finally:
         conn.close()
 
+def score_command(plan_path: Path, db_path: Path, answers_root: Path = Path("answers"),
+                  reports_root: Path = Path("reports"), ask=input) -> int:
+    """Score a bake-off plan against its answer sheets. Free: no model is called.
+    Exit codes: 0 final, 1 some items unjudged, 2 cannot start, 3 nothing to score yet."""
+    conn = db.connect(db_path)
+    try:
+        return score_plan(conn, plan_path, answers_root, reports_root, ask)
+    except PlanError as e:
+        print(f"Cannot start: {e}")
+        return 2
+    finally:
+        conn.close()
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="triage", description="Dealflow triage prototype")
@@ -161,7 +175,13 @@ def main(argv: list[str] | None = None) -> int:
     bakeoff_cmd.add_argument("--raw", type=Path, default=DEFAULT_RAW_DIR)
     bakeoff_cmd.add_argument("--pages", type=Path, default=DEFAULT_PAGES_DIR)
     bakeoff_cmd.add_argument("--env", type=Path, default=Path(".env"))
+    score_cmd = commands.add_parser("score", help="Score a bake-off plan against its answer sheets (free)")
+    score_cmd.add_argument("plan", type=Path, help="plan file, e.g. bakeoff/round1.toml")
+    score_cmd.add_argument("--db", type=Path, default=db.DEFAULT_DB_PATH)
     args = parser.parse_args(argv)
+
+    if args.command == "score":
+        return score_command(args.plan, args.db)
 
     if args.command == "bakeoff":
         return bakeoff_command(args.plan, args.again, args.db, args.raw, args.pages, args.env)
