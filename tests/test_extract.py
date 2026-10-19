@@ -133,6 +133,17 @@ def test_an_answer_in_the_old_v1_shape_still_becomes_a_card():
     assert card_from_answer(json.dumps(old_shape)).company_name.value == "Cyclica"
 
 
+def test_an_answer_wrapped_in_a_code_fence_becomes_a_card():
+    for fence in ("```json\n", "```\n", "  ```json  \n"):
+        assert card_from_answer(fence + GOOD + "\n```\n").company_name.value == "Cyclica"  # decision 94
+
+
+def test_text_around_a_fenced_answer_is_not_forgiven():
+    for reply in ("Here is the card:\n```json\n" + GOOD + "\n```", "```json\n" + GOOD + "\n```\nHope this helps!"):
+        with pytest.raises(ValueError):
+            card_from_answer(reply)
+
+
 def test_instructions_v2_differ_from_v1_only_in_rule_3():
     v1, v2 = load_instructions("pitch_card_v1").splitlines(), load_instructions("pitch_card_v2").splitlines()
     changed = [(a, b) for a, b in zip(v1, v2) if a != b]

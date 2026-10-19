@@ -346,6 +346,7 @@ class ModelTotals:
     team: Counter = field(default_factory=Counter)
     traction: Counter = field(default_factory=Counter)
     quotes: Counter = field(default_factory=Counter)
+    modes: set = field(default_factory=set)  # strict and/or json (decision 94)
     hand_judged: int = 0
 
     def total(self, outcome: str) -> int:
@@ -370,16 +371,18 @@ def _report(plan_path: Path, prompt: str, totals: dict[str, ModelTotals], detail
     if unjudged:
         lines += [f"**Not final: {unjudged} items still unjudged.** Run `triage score` again to finish.", ""]
     lines += ["| Model | Runs ok / failed | Invented | Wrong | Missed | Correct | Correctly empty | "
-              "Valid extra | Unjudged | Hand-judged | Cost |",
-              "|---|---|---|---|---|---|---|---|---|---|---|"]
+              "Valid extra | Unjudged | Hand-judged | Cost | Output mode |",
+              "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for name, t in totals.items():
         lines.append(f"| {name} | {t.runs_ok} / {t.runs_failed} | {t.total('invented')} | {t.total('wrong')} | "
                      f"{t.total('missed')} | {t.total('correct')} | {t.fields['empty']} | "
                      f"{t.team['valid_extra'] + t.traction['valid_extra']} | {t.total('unjudged')} | "
-                     f"{t.hand_judged} | ${t.cost:.4f} |")
+                     f"{t.hand_judged} | ${t.cost:.4f} | {', '.join(sorted(t.modes)) or '-'} |")
     lines += ["", "Counts cover the 9 single fields plus every team member and traction claim. "
               "Wrong includes a traction claim filed under the wrong kind; a different team role is "
-              "listed below but still counts the person as correct (decision 88).", "",
+              "listed below but still counts the person as correct (decision 88). Output mode: strict means "
+              "the provider enforced the card layout; json means the layout was only in the instructions and "
+              "the card was checked in code afterwards (decision 93).", "",
               "| Model | Quotes verified | Not in text | Unverifiable | Bad |", "|---|---|---|---|---|"]
     for name, t in totals.items():
         q = t.quotes
@@ -422,6 +425,7 @@ def score_plan(conn: sqlite3.Connection, plan_path: Path, answers_root: Path = P
         for row in _attempts(conn, matches[0][0], plan.prompt, model_names):
             t = totals[row["requested_model"]]
             t.cost += row["cost"] or 0.0
+            t.modes.add(row["output_mode"])
             if row["outcome"] != "extracted":
                 t.runs_failed += 1
                 details += [f"### {row['requested_model']} on {deck} (attempt {row['id']})", "",

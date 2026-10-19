@@ -73,10 +73,10 @@ class World:
     def sheet(self, deck, card):
         (self.answers / f"{deck}.json").write_text(card.model_dump_json(indent=2), encoding="utf-8")
 
-    def attempt(self, deck, model, card=None, failure=None, cost=0.01, quotes=(3, 1, 2, 0)):
+    def attempt(self, deck, model, card=None, failure=None, cost=0.01, quotes=(3, 1, 2, 0), mode="strict"):
         row = dict(pitch_id=self.pitch[deck], purpose="bakeoff", started_at=NOW.isoformat(),
                    outcome="failed" if failure else "extracted", failure=failure,
-                   prompt_version="pitch_card_v1", requested_model=model, output_mode="strict",
+                   prompt_version="pitch_card_v1", requested_model=model, output_mode=mode,
                    data_collection="deny", cost=cost)
         if card is not None:
             row.update(card_json=card.model_dump_json(), quotes_verified=quotes[0], quotes_not_in_text=quotes[1],
@@ -290,3 +290,11 @@ def test_score_command_reports_a_bad_answer_sheet_without_crashing(world, tmp_pa
     code = score_command(world.plan, tmp_path / "test.db", tmp_path / "answers", world.reports)
     world.conn = db.connect(tmp_path / "test.db")
     assert code == 2 and "not a valid card" in capsys.readouterr().out
+
+def test_each_model_s_output_mode_is_shown_beside_its_scores(world):
+    world.sheet("Gridcure", PitchCard(company_name=fact("GridCure")))
+    world.attempt("Gridcure", "a/strong", PitchCard(company_name=fact("GridCure")), mode="json")
+    world.attempt("Gridcure", "b/strong", PitchCard(company_name=fact("GridCure")))
+    assert world.score() == 0
+    assert row_for(world, "a/strong")[11] == "json" and row_for(world, "b/strong")[11] == "strict"
+    assert "json means the layout was only in the instructions" in world.report

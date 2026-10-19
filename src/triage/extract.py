@@ -5,6 +5,7 @@ Every outcome is saved, failures included (decisions 55, 63, 64).
 """
 
 import json
+import re
 import sqlite3
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -21,6 +22,9 @@ from triage.storage import RawStore
 PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
 DEFAULT_PROMPT = "pitch_card_v2"  # v2: whole facts are null when empty (decision 92)
 PURPOSES = ("pipeline", "bakeoff")
+
+# One JSON object wrapped in a code fence, nothing else: JSON-mode models often answer like this.
+_FENCED = re.compile(r"\A\s*```(?:json)?[ \t]*\n(.*)\n[ \t]*```\s*\Z", re.DOTALL)
 
 SINGLE_FACTS = ("company_name", "website", "one_liner", "sector", "stage", "round_size",
                 "headquarters", "product", "ai_role")
@@ -77,8 +81,10 @@ def count_emptyable(node) -> int:
 
 def card_from_answer(raw_text: str) -> PitchCard:
     """The model's answer as a PitchCard: a null fact becomes an empty Fact (decision 92).
+        A code fence around the whole answer is layout and is removed; anything else stays (decision 94).
     Raises ValueError (ValidationError included) when the answer is not a valid card."""
-    data = json.loads(raw_text)
+    fenced = _FENCED.match(raw_text)
+    data = json.loads(fenced.group(1) if fenced else raw_text)
     if isinstance(data, dict):
         for name in SINGLE_FACTS:
             if name in data and data[name] is None:
