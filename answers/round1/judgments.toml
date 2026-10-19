@@ -1,0 +1,191 @@
+# Hand judgments for scoring (decisions 85, 86, 88). One [[judgment]] per call.
+# verdict: correct | wrong | invented | valid_extra | same
+
+[[judgment]]
+deck = "DecisiveHealth"
+field = "product"
+sheet = "Your medical bill"
+model = "Clear Medical Billing"
+verdict = "correct"
+
+[[judgment]]
+deck = "DecisiveHealth"
+field = "team"
+sheet = "Jonathan Shih"
+model = "Jonathan Shih, PhD"
+verdict = "same"
+
+[[judgment]]
+deck = "DecisiveHealth"
+field = "team"
+sheet = "Nathanael Rosidi"
+model = "Nathanael Rosidi, PhD"
+verdict = "same"
+
+[[judgment]]
+deck = "DecisiveHealth"
+field = "team"
+sheet = "Emily McGovern"
+model = "Emily McGovern, MS, RD"
+verdict = "same"
+
+[[judgment]]
+deck = "DecisiveHealth"
+field = "product"
+sheet = "Your medical bill"
+model = "A patient-facing medical bill that shows in-network, out-of-network and cash prices, what the insurer will pay and what the patient will pay"
+verdict = "correct"
+
+[[judgment]]
+deck = "Cyclica"
+field = "sector"
+sheet = "neo biotechnology"
+model = "drug discovery"
+verdict = "correct"
+
+[[judgment]]
+deck = "Cyclica"
+field = "headquarters"
+sheet = "207 Queens Quay West, Toronto, Ontario M5J 1A7"
+model = "Toronto, Ontario"
+verdict = "correct"
+
+[[judgment]]
+deck = "Cyclica"
+field = "product"
+sheet = "Ligand Design and Ligand Express, an integrated drug discovery platform powered by MatchMaker and POEM"
+model = "Ligand Design and Ligand Express: advanced leads that minimize off-target activity while ensuring drug-like and ADMET properties."
+verdict = "correct"
+
+[[judgment]]
+deck = "Cyclica"
+field = "ai_role"
+sheet = "The platform is powered by MatchMaker, a deep learning model to identify drug-target interactions across the entire known proteome, and POEM, a general purpose machine learning engine implemented to design for ADMET properties"
+model = "MatchMaker\u2122, a deep learning model to identify drug-target interactions across the entire known proteome, and POEM\u2122, a general purpose machine learning engine that has been implemented to design for ADMET properties."
+verdict = "correct"
+
+[[judgment]]
+deck = "Cyclica"
+field = "traction"
+sheet = ""
+model = "revenue: Continuing to work with global pharma cos. through revenue generating engagements."
+verdict = "valid_extra"
+
+[[judgment]]
+deck = "Cyclica"
+field = "traction"
+sheet = ""
+model = "other: Designed advanced leads that minimize off-target activity while ensuring drug-like and ADMET properties."
+verdict = "valid_extra"
+
+[[judgment]]
+deck = "Cyclica"
+field = "traction"
+sheet = ""
+model = "other: Business model adopted in the industry, contributing to research efforts of early stage biotech, research institutes, and multinational companies globally."
+verdict = "valid_extra"
+
+[[judgment]]
+deck = "Cyclica"
+field = "traction"
+sheet = ""
+model = "other: Operational since 2014."
+verdict = "valid_extra"
+
+[[judgment]]
+deck = "Cyclica"
+field = "traction"
+sheet = "other: Technology developed and patented at Cyclica (2014 - ongoing); strong IP position"
+model = "other: Technology developed and patented at Cyclica (2014 - ongoing); strong IP position."
+verdict = "same"
+
+[[judgment]]
+deck = "Cyclica"
+field = "traction"
+sheet = ""
+model = "other: 35 employees; computational scientists, experimentalists, data scientists, software developers."
+verdict = "valid_extra"
+
+[[judgment]]
+deck = "Cyclica"
+field = "product"
+sheet = "Ligand Design and Ligand Express, an integrated drug discovery platform powered by MatchMaker and POEM"
+model = "An integrated drug discovery platform with Ligand Design and Ligand Express, powered by MatchMaker and POEM, to query the entire proteome using computational biophysics and AI for multi-objective drug design, lead optimization, target deconvolution, and drug repurposing for small molecules, including PROTACS."
+verdict = "correct"
+
+[[judgment]]
+deck = "Cyclica"
+field = "ai_role"
+sheet = "The platform is powered by MatchMaker, a deep learning model to identify drug-target interactions across the entire known proteome, and POEM, a general purpose machine learning engine implemented to design for ADMET properties"
+model = "AI augments computational biophysics; the integrated drug discovery platform is powered by MatchMaker\u2122, a deep learning model to identify drug-target interactions across the entire known proteome, and POEM\u2122, a general purpose machine learning engine that has been implemented to design for ADMET properties."
+verdict = "correct"
+
+[[judgment]]
+deck = "Cyclica"
+field = "traction"
+sheet = ""
+model = "revenue: Continuing to work with global pharma cos. through revenue generating engagements"
+verdict = "valid_extra"
+
+[[judgment]]
+deck = "Cyclica"
+field = "traction"
+sheet = ""
+model = "customers: Business model adopted by early stage biotech, research institutes, and multinational companies globally, including Tie\u00f6s Pharmaceuticals, Merck KGaA, and University of Toronto"
+verdict = "valid_extra"
+
+[[judgment]]
+deck = "Cyclica"
+field = "traction"
+sheet = "partnership: University of Toronto collaboration on novel EGFR inhibitors"
+model = "partnership: Collaboration with University of Toronto"
+verdict = "same"
+
+[[judgment]]
+deck = "Cyclica"
+field = "traction"
+sheet = ""
+model = "other: Operational since 2014"
+verdict = "valid_extra"
+
+[[judgment]]
+deck = "Cyclica"
+field = "traction"
+sheet = ""
+model = "other: 35 employees"
+verdict = "valid_extra"
+
+[[judgment]]
+deck = "Cyclica"
+field = "sector"
+sheet = "neo biotechnology"
+model = "AI in Drug Discovery"
+verdict = "wrong"
+
+[[judgment]]
+deck = "Cyclica"
+field = "product"
+sheet = "Ligand Design and Ligand Express, an integrated drug discovery platform powered by MatchMaker and POEM"
+model = "An integrated drug discovery platform made up of Ligand Design and Ligand Express, used for multi-objective drug design, lead optimization, target deconvolution, and drug repurposing for small molecules"
+verdict = "correct"
+
+[[judgment]]
+deck = "Cyclica"
+field = "ai_role"
+sheet = "The platform is powered by MatchMaker, a deep learning model to identify drug-target interactions across the entire known proteome, and POEM, a general purpose machine learning engine implemented to design for ADMET properties"
+model = "The integrated drug discovery platform is powered by MatchMaker, a deep learning model to identify drug-target interactions across the entire known proteome, and POEM, a general purpose machine learning engine implemented to design for ADMET properties. The deck says AI is best when it augments computational biophysics."
+verdict = "correct"
+
+[[judgment]]
+deck = "Cyclica"
+field = "traction"
+sheet = ""
+model = "other: Validated and commercialized (2015 - ongoing)"
+verdict = "valid_extra"
+
+[[judgment]]
+deck = "Cyclica"
+field = "traction"
+sheet = ""
+model = "other: Goal to create over 300 programs by 2025 through partnership model"
+verdict = "valid_extra"
